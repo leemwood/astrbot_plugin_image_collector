@@ -1,0 +1,10 @@
+name: astrbot_plugin_image_collector
+author: Qwen-Code
+version: 1.0.0
+desc: 让 LLM 自主判断图片收藏价值，按分类存储，支持嵌入检索匹配的表情/图片
+repo: https://github.com/qwen-code/astrbot_plugin_image_collector
+astrbot_version: ">=4.16,<5"
+support_platforms:
+  - aiocqhttp
+  - telegram
+  - qq_official

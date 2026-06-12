@@ -1,0 +1,20 @@
+{
+  "embedding_enabled": {
+    "description": "启用嵌入检索自动匹配",
+    "type": "bool",
+    "hint": "开启后会在 LLM 请求时自动检索匹配的收藏图片注入上下文",
+    "default": false
+  },
+  "similarity_threshold": {
+    "description": "嵌入匹配最低相似度",
+    "type": "float",
+    "hint": "0-1 之间，越高越严格",
+    "default": 0.7
+  },
+  "max_context_images": {
+    "description": "最多注入上下文图片数",
+    "type": "int",
+    "hint": "每次请求最多注入几张匹配的收藏图片路径",
+    "default": 3
+  }
+}
