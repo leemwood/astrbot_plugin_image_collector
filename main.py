@@ -134,13 +134,12 @@ class ImageCollectorPlugin(Star):
         # ── 1. 提取当前消息中的图片 URL ──
         image_urls = self._extract_image_urls(event)
         if image_urls:
-            lines = ["当前消息中包含以下可收藏的图片:"]
+            lines = ["[重要] 当前消息中包含以下图片，如果你认为这些图片有收藏价值（如表情包、梗图、美图、实用截图等），请务必调用 collect_image 工具收藏:"]
             for i, img in enumerate(image_urls, 1):
                 lines.append(f"  图片{i}: {img['url']}")
             lines.append(
-                "你可以使用 collect_image 工具收藏有价值的图片。"
-                "参数: url(图片URL), category(分类文件夹,如\"表情包\"/\"梗图\"/\"美图\"), "
-                "filename(文件名不含扩展名), description(收藏理由), tags(逗号分隔标签)"
+                "collect_image 参数: url(图片URL), category(分类,如\"表情包\"/\"梗图\"/\"美图\"/\"实用截图\"), "
+                "filename(文件名不含扩展名), description(收藏理由/图片描述), tags(逗号分隔标签)"
             )
             extra_lines.append("\n".join(lines))
 
@@ -414,106 +413,6 @@ class ImageCollectorPlugin(Star):
         for cat, count in sorted(cats.items()):
             lines.append(f"  - {cat}: {count} 张")
         return "\n".join(lines)
-
-    # ═══════════════════════════════════════════════
-    #  命令
-    # ═══════════════════════════════════════════════
-
-    @filter.command("collect")
-    async def cmd_collect(self, event: AstrMessageEvent):
-        """手动收藏当前消息中的图片。"""
-        image_urls = self._extract_image_urls(event)
-        if not image_urls:
-            yield event.plain_result("当前消息中没有图片。请发送图片后使用 /collect。")
-            return
-
-        if len(image_urls) == 1:
-            url = image_urls[0]["url"]
-            yield event.plain_result(
-                f"请使用 LLM 的 collect_image 工具收藏这张图片。\n图片URL: {url}"
-            )
-        else:
-            lines = [f"检测到 {len(image_urls)} 张图片，请使用 collect_image 工具选择收藏:"]
-            for i, img in enumerate(image_urls, 1):
-                lines.append(f"  图片{i}: {img['url']}")
-            yield event.plain_result("\n".join(lines))
-
-    @filter.command("search_image")
-    async def cmd_search_image(self, event: AstrMessageEvent, query: str = ""):
-        """搜索已收藏的图片。
-
-        Args:
-            query: 搜索关键词
-        """
-        if not query:
-            yield event.plain_result("用法: /search_image <关键词>")
-            return
-
-        index = await self._load_index()
-        if not index:
-            yield event.plain_result("收藏库中暂无图片。")
-            return
-
-        query_lower = query.lower()
-        results: list[tuple[int, dict]] = []
-        for entry in index:
-            score = 0
-            if query_lower in entry.get("description", "").lower():
-                score += 3
-            if query_lower in entry.get("filename", "").lower():
-                score += 2
-            if query_lower in entry.get("category", "").lower():
-                score += 1
-            for tag in entry.get("tags", []):
-                if query_lower in tag.lower():
-                    score += 2
-            if score > 0:
-                results.append((score, entry))
-        results.sort(key=lambda x: x[0], reverse=True)
-        results = results[:10]
-
-        if not results:
-            yield event.plain_result(f"未找到与「{query}」匹配的收藏图片。")
-            return
-
-        lines = [f"搜索「{query}」找到 {len(results)} 张图片:"]
-        for _, e in results:
-            lines.append(
-                f"  - {e['local_path']} "
-                f"({e['category']}, 标签: {', '.join(e.get('tags', []))})"
-            )
-        yield event.plain_result("\n".join(lines))
-
-    @filter.command("collections")
-    async def cmd_collections(self, event: AstrMessageEvent):
-        """查看收藏库统计。"""
-        index = await self._load_index()
-        if not index:
-            yield event.plain_result("收藏库中暂无图片。")
-            return
-
-        cats: dict[str, int] = {}
-        total_size = 0
-        for entry in index:
-            cat = entry.get("category", "未分类")
-            cats[cat] = cats.get(cat, 0) + 1
-            total_size += entry.get("file_size", 0)
-
-        def _fmt_size(s: int) -> str:
-            if s < 1024:
-                return f"{s} B"
-            elif s < 1024 * 1024:
-                return f"{s / 1024:.1f} KB"
-            else:
-                return f"{s / (1024 * 1024):.1f} MB"
-
-        lines = [
-            f"收藏库共 {len(index)} 张图片，{len(cats)} 个分类，占用 {_fmt_size(total_size)}",
-            "",
-        ]
-        for cat, count in sorted(cats.items()):
-            lines.append(f"  {cat}: {count} 张")
-        yield event.plain_result("\n".join(lines))
 
     async def terminate(self):
         """插件卸载时调用。"""
